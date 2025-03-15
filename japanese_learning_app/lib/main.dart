@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: LearningPathScreen(), // ✅ Start with the Learning Path selection screen
+      home: HomeScreen(), // ✅ Start with the Learning Path selection screen
     
     );
   }

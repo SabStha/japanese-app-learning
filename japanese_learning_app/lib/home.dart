@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'learning_path_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -7,170 +9,67 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int xp = 0; // Stores user's XP
-  int level = 1; // Stores user's level
-  int streak = 0; // Stores user's streak progress
-  String userId = "test_user"; // Replace with actual user ID when authentication is added
-  List<String> rewards = []; // Stores user rewards
-  List<String> unlockedFeatures = []; // Stores unlocked features
-  List<String> earnedBadges = []; // Stores user's earned badges
-
+  int xp = 0; 
+  int level = 1; 
+  int streak = 0; 
+  String userId = "test_user"; 
+  String learningPath = "Not Selected"; // Stores user’s learning path
+  List<String> unlockedFeatures = []; // ✅ Add this missing variable
+  List<String> earnedBadges = []; // ✅ Add this missing variable
+  
   @override
   void initState() {
     super.initState();
-    fetchXP(); // Fetch XP & Streak when screen loads
+    fetchXP();
+    fetchUserData(); // Fetch user XP, streak, level, and learning path
+    
   }
+  
 
-
-  void checkForNewBadges() async {
+  void fetchUserData() async {
     try {
-        DocumentSnapshot snapshot = await FirebaseFirestore.instance
-            .collection('user_progress')
-            .doc(userId)
-            .get();
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('user_progress').doc(userId).get();
 
-        if (!snapshot.exists) return; // Stop if no data
-
+      if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>?;
 
-        List<String> currentBadges = List<String>.from(data?["badges"] ?? []);
-        List<String> newBadges = [];
-
-        // 🔥 Streak Badges
-        if (streak >= 5 && !currentBadges.contains("🔥 5-Day Streak")) newBadges.add("🔥 5-Day Streak");
-        if (streak >= 10 && !currentBadges.contains("🔥 10-Day Streak")) newBadges.add("🔥 10-Day Streak");
-        if (streak >= 30 && !currentBadges.contains("🔥 30-Day Streak")) newBadges.add("🔥 30-Day Streak");
-
-        // 🎓 XP-Based Learning Badges
-        if (xp >= 1000 && !currentBadges.contains("📚 First 1000 XP")) newBadges.add("📚 First 1000 XP");
-        if (xp >= 5000 && !currentBadges.contains("🏆 Serious Learner")) newBadges.add("🏆 Serious Learner");
-
-        // 🚀 Level-Based Badges
-        if (level >= 5 && !currentBadges.contains("⭐ Reached Level 5")) newBadges.add("⭐ Reached Level 5");
-        if (level >= 10 && !currentBadges.contains("🌟 Reached Level 10")) newBadges.add("🌟 Reached Level 10");
-
-        if (newBadges.isNotEmpty) {
-        // ✅ Merge new badges with existing ones
-        List<String> updatedBadges = List.from(currentBadges)..addAll(newBadges);
-
-        // ✅ Store in Firestore
-        await FirebaseFirestore.instance.collection('user_progress').doc(userId).update({
-            "badges": updatedBadges, // Overwrite with updated list
+        setState(() {
+          xp = data?["xp"] ?? 0;
+          streak = data?["streak"] ?? 0;
+          level = data?["level"] ?? 1;
+          learningPath = data?["learning_path"] ?? "Not Selected";
         });
 
-        // ✅ Show pop-up for each newly unlocked badge
-        for (String badge in newBadges) {
-            showBadgePopup(badge);
-        }
+        print("✅ XP: $xp | Streak: $streak | Level: $level | Learning Path: $learningPath");
+      }
+    } catch (e) {
+      print("❌ Error fetching user data: $e");
+    }
+  }
+
+  void fetchXP() {
+    FirebaseFirestore.instance
+        .collection('user_progress')
+        .doc(userId)
+        .snapshots() // ✅ Listen for real-time updates
+        .listen((snapshot) {
+        if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>?;
 
         setState(() {
-            earnedBadges = updatedBadges; // ✅ Update UI
+            xp = data?["xp"] ?? 0;
+            streak = data?["streak"] ?? 0;
+            level = data?["level"] ?? 1;
+            unlockedFeatures = List<String>.from(data?["unlocked_features"] ?? []);
+            earnedBadges = List<String>.from(data?["badges"] ?? []);
+            learningPath = data?["learning_path"] ?? "Not Set"; // ✅ Update learning path instantly
         });
 
-        print("🏆 New Badges Earned: $newBadges");
+        print("✅ XP: $xp | Streak: $streak | Level: $level | Learning Path: $learningPath");
         }
-    } catch (e) {
-        print("❌ Error updating badges: $e");
+    });
     }
- }
 
-
-
-  void showBadgePopup(String badgeName) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-        return AlertDialog(
-            title: Text("🏆 Achievement Unlocked!"),
-            content: Text("You've earned the '$badgeName' badge!"),
-            actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
-            ),
-            ],
-        );
-        },
-    );
-  }
-
-  /// ✅ Shows a pop-up when a new feature is unlocked
-  void showUnlockedFeatureDialog(String feature) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("🎉 New Feature Unlocked!"),
-          content: Text(feature),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// ✅ Fetches XP, Streak, Level, Rewards, and Unlocked Features from Firestore
-  void fetchXP() async {
-    try {
-        DocumentSnapshot snapshot = await FirebaseFirestore.instance
-            .collection('user_progress')
-            .doc(userId)
-            .get();
-
-        if (snapshot.exists) {
-            final data = snapshot.data() as Map<String, dynamic>?;
-
-        
-            setState(() {
-                xp = data?["xp"] ?? 0;
-                streak = data?["streak"] ?? 0;
-                level = data?["level"] ?? 1;
-                rewards = List<String>.from(data?["rewards"] ?? []);
-                unlockedFeatures = List<String>.from(data?["unlocked_features"] ?? []); // ✅ Correctly update the list
-                earnedBadges = List<String>.from(data?["badges"] ?? []);
-            });
-
-            // ✅ Check for newly earned badges
-            checkForNewBadges();
-
-            print("✅ XP: $xp | Streak: $streak | Level: $level | Badges: $earnedBadges");
-            }
-
-            
-        } catch (e) {
-            print("❌ Error fetching XP & Features: $e");
-        }
-}
-
-
-
-  /// ✅ Shows a pop-up when the user earns a reward
-  void showRewardsDialog() {
-    if (rewards.isNotEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("🎁 Rewards Earned!"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: rewards.map((reward) => Text(reward)).toList(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             SizedBox(height: 40),
 
-            /// ✅ Welcome Message & Streak Display
+            /// ✅ Display User Info
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -197,6 +96,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       "Streak: 🔥 $streak Days",
                       style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    Text(
+                      "📖 Learning Path: $learningPath",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -246,19 +149,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
             SizedBox(height: 30),
 
-            /// ✅ Mascot Reaction Based on XP
+            /// ✅ Learning Path-Specific Button
             Center(
-              child: Column(
-                children: [
-                  Image.asset("assets/mascot_happy.png", width: 120), // Mascot Image
-                  SizedBox(height: 10),
-                  Text(
-                    xp == 0 && level > 1
-                        ? "🎉 You Leveled Up to Level $level!"
-                        : "Great job! Keep up your streak! 🎉",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => LearningPathScreen()),
+                  );
+                },
+                child: Text("Change Learning Path"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                ),
               ),
             ),
           ],
