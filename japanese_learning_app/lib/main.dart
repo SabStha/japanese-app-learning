@@ -4,8 +4,21 @@ import 'lessons.dart';
 import 'ai_chat.dart';
 import 'leaderboard.dart';
 import 'profile.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Import the Firebase options
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await Firebase.initializeApp(
+      options: firebaseOptions, // Use web-specific Firebase config
+    );
+    print("🔥 Firebase initialized successfully!");
+  } catch (e) {
+    print("❌ Firebase failed to initialize: $e");
+  }
+
   runApp(MyApp());
 }
 
