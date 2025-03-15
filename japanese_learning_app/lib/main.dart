@@ -6,6 +6,7 @@ import 'leaderboard.dart';
 import 'profile.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Import the Firebase options
+import 'learning_path.dart'; // Import the new screen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +31,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MainScreen(),
+      home: LearningPathScreen(), // ✅ Start with the Learning Path selection screen
+    
     );
   }
 }
